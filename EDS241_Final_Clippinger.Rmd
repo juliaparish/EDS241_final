@@ -37,7 +37,7 @@ for (i in packages) {
 #devtools::install_github('rstudio/rmarkdown')
 options(scipen=999) # not scientific notation
 
-setwd("C:/Users/clipp/Documents/UCSB/EDS241/final_assignment")
+setwd("C:/Users/clipp/Documents/UCSB/EDS241/final_assignment/EDS241_final")
 ```
 
 # Data
@@ -46,19 +46,20 @@ setwd("C:/Users/clipp/Documents/UCSB/EDS241/final_assignment")
 
 ```{r load_data}
 # Load data
-km_data <- read_csv("KM_EDS241.csv") 
+km_data <- read_csv("KM_EDS241.csv") %>% 
+  mutate(nearinc = factor(nearinc))
 
 # Create data frames for each year
-km_1981 <- km_data %>% filter(year==1981)
-km_1978 <- km_data %>% filter(year==1978)
+km_81 <- km_data %>% filter(year==1981)
+km_78 <- km_data %>% filter(year==1978)
 ```
 
 # Question 1
 
 \noindent (a) Using the data for 1981, estimate a simple OLS regression of real house values on the indicator for being located near the incinerator in 1981. What is the house value “penalty” for houses located near the incinerator? Does this estimated coefficient correspond to the ‘causal’ effect of the incinerator (and the negative amenities that come with it) on housing values? Explain why or why not.
 
-```{r a}
-model1 <- lm_robust(formula = rprice ~ nearinc, data = km_1981)
+```{r a, echo=FALSE}
+model1 <- lm_robust(formula = rprice ~ nearinc, data = km_81)
 
 tidy_model1 <- broom::tidy(model1)
 tidy_model1 %>%
@@ -66,16 +67,45 @@ tidy_model1 %>%
   knitr::kable()
 ```
 
+The house value "penalty" for houses located near the incinerator (nearinc=1) is $`r round(model1$coefficients[[2]], 2)`. This means that, based on this simple OLS regression, houses near the incinerator are, on average, worth $30,688 less than houses away from the incinerator. The estimated coefficient does not correspond to the causal effect of the incinerator because other confounding variables, such as age of the home, square footage, and number of rooms, are not taken into account.
 
-
-
+\newpage
 \noindent (b) Using the data for 1978, provide some evidence the location choice of the incinerator was not “random”, but rather selected on the basis of house values and characteristics. [Hint: in the 1978 sample, are house values and characteristics balanced by nearinc status?]
 
-
 ```{r b}
-
+price_difference = mean(km_78[km_78$nearinc==0,]$rprice) - mean(km_78[km_78$nearinc==1,]$rprice)
+area_difference = mean(km_78[km_78$nearinc==0,]$area) - mean(km_78[km_78$nearinc==1,]$area)
+rooms_difference = mean(km_78[km_78$nearinc==0,]$rooms) - mean(km_78[km_78$nearinc==1,]$rooms)
 ```
 
+Prior to "treatment" (i.e., the construction of the incinerator), the mean average value of a home was $`r round(price_difference, 2)` higher for the houses that would be away from the incinerator than for the houses that would be close to the incinerator in 1981. This positive difference indicates that homes further from the incinerator were valued higher (on average) prior to construction, which could mean that the location of construction was not random, but instead selected based on existing home value. Additionally, homes away from construction had `r round(area_difference, 2)` greater square footage and `r round(rooms_difference, 2)` more rooms, on average, supporting the claim that the location of construction was based on home characteristics. These relationships can be examined using simple OLS regression.
+
+```{r b_evidence1, echo=FALSE, fig.cap="Relationship between price and proximity prior to construction"}
+lm_robust(rprice ~ nearinc, km_78) %>% 
+  tidy() %>% 
+  select(term, estimate, std.error, p.value) %>% 
+  kable()
+```
+
+The first regression shows that there the average home value is statistically significantly lower for homes near the incinerator prior to construction.
+
+```{r b_evidence2, echo=FALSE, fig.cap="Relationship between area and proximity prior to construction"}
+lm_robust(area ~ nearinc, km_78) %>% 
+  tidy() %>% 
+  select(term, estimate, std.error, p.value) %>% 
+  kable()
+```
+
+The second regression shows that the average home square footage is statistically significantly (p<0.05) lower for home near the incinerator prior to construction. 
+
+```{r b_evidence3, echo=FALSE, fig.cap="Relationship between rooms and proximity prior to construction"}
+lm_robust(rooms ~ nearinc, km_78) %>% 
+  tidy() %>% 
+  select(term, estimate, std.error, p.value) %>% 
+  kable()
+```
+
+The third regression shows that the average number of rooms was statistically significantly lower for homes near the incinerator prior to construction.
 
 
 \noindent (c) Based on the observed differences in (b), explain why the estimate in (a) is likely to be biased downward (i.e., overstate the negative effect of the incinerator on housing values).
