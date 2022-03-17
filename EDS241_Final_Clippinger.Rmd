@@ -11,7 +11,7 @@ header-includes:
   - \usepackage{float}
 --- 
 
-``` {r setup, echo = FALSE, message = FALSE, warning = FALSE}
+``` {r setup, echo=F, message=F, warning=F}
 # set default chunk options
 knitr::opts_chunk$set(fig.width = 4, 
                       fig.height = 3, 
@@ -58,14 +58,15 @@ km_78 <- km_data %>% filter(year==1978)
 
 \noindent (a) Using the data for 1981, estimate a simple OLS regression of real house values on the indicator for being located near the incinerator in 1981. What is the house value “penalty” for houses located near the incinerator? Does this estimated coefficient correspond to the ‘causal’ effect of the incinerator (and the negative amenities that come with it) on housing values? Explain why or why not.
 
-```{r a, echo=FALSE}
+```{r a}
 model1 <- lm_robust(formula = rprice ~ nearinc, data = km_81)
 
-tidy_model1 <- broom::tidy(model1)
-tidy_model1 %>%
+model1 %>% 
+  tidy() %>%
   dplyr::select(term, estimate, std.error, p.value) %>% 
   knitr::kable()
 ```
+\bigskip
 
 The house value "penalty" for houses located near the incinerator (nearinc=1) is $`r round(model1$coefficients[[2]], 2)`. This means that, based on this simple OLS regression, houses near the incinerator are, on average, worth $30,688 less than houses away from the incinerator. The estimated coefficient does not correspond to the causal effect of the incinerator because other confounding variables, such as age of the home, square footage, and number of rooms, are not taken into account.
 
@@ -73,87 +74,155 @@ The house value "penalty" for houses located near the incinerator (nearinc=1) is
 \noindent (b) Using the data for 1978, provide some evidence the location choice of the incinerator was not “random”, but rather selected on the basis of house values and characteristics. [Hint: in the 1978 sample, are house values and characteristics balanced by nearinc status?]
 
 ```{r b}
-price_difference = mean(km_78[km_78$nearinc==0,]$rprice) - mean(km_78[km_78$nearinc==1,]$rprice)
-area_difference = mean(km_78[km_78$nearinc==0,]$area) - mean(km_78[km_78$nearinc==1,]$area)
-rooms_difference = mean(km_78[km_78$nearinc==0,]$rooms) - mean(km_78[km_78$nearinc==1,]$rooms)
+price_diff = mean(km_78[km_78$nearinc==0,]$rprice) - mean(km_78[km_78$nearinc==1,]$rprice)
+area_diff = mean(km_78[km_78$nearinc==0,]$area) - mean(km_78[km_78$nearinc==1,]$area)
+rooms_diff = mean(km_78[km_78$nearinc==0,]$rooms) - mean(km_78[km_78$nearinc==1,]$rooms)
 ```
 
-Prior to "treatment" (i.e., the construction of the incinerator), the mean average value of a home was $`r round(price_difference, 2)` higher for the houses that would be away from the incinerator than for the houses that would be close to the incinerator in 1981. This positive difference indicates that homes further from the incinerator were valued higher (on average) prior to construction, which could mean that the location of construction was not random, but instead selected based on existing home value. Additionally, homes away from construction had `r round(area_difference, 2)` greater square footage and `r round(rooms_difference, 2)` more rooms, on average, supporting the claim that the location of construction was based on home characteristics. These relationships can be examined using simple OLS regression.
+Prior to "intervention" (i.e., the construction of the incinerator), the mean average value of a home was $`r round(price_diff, 2)` higher for the houses that would be away from the incinerator (control group) than for the houses that would be close to the incinerator in 1981 (treatment group). This positive difference indicates that homes further from the incinerator were valued higher (on average) prior to construction, which could mean that the location of construction was not random, but instead selected based on existing home value. Additionally, homes away from construction had `r round(area_diff, 2)` greater square footage and `r round(rooms_diff, 2)` more rooms, on average, supporting the claim that the location of construction was based on home characteristics. These relationships can be examined using simple OLS regression.
 
-```{r b_evidence1, echo=FALSE, fig.cap="Relationship between price and proximity prior to construction"}
+The first regression shows that the the average home value is statistically significantly lower for homes near the incinerator prior to construction.
+
+```{r b_evidence1, echo=F}
 lm_robust(rprice ~ nearinc, km_78) %>% 
   tidy() %>% 
-  select(term, estimate, std.error, p.value) %>% 
+  select(term, estimate, std.error, p.value, outcome) %>% 
   kable()
 ```
+formula: rprice ~ nearinc
+\bigskip
 
-The first regression shows that there the average home value is statistically significantly lower for homes near the incinerator prior to construction.
+The second regression shows that the average home square footage is statistically significantly (p<0.05) lower for homes near the incinerator prior to construction. 
 
-```{r b_evidence2, echo=FALSE, fig.cap="Relationship between area and proximity prior to construction"}
+```{r b_evidence2, echo=FALSE}
 lm_robust(area ~ nearinc, km_78) %>% 
   tidy() %>% 
-  select(term, estimate, std.error, p.value) %>% 
+  select(term, estimate, std.error, p.value, outcome) %>% 
   kable()
 ```
-
-The second regression shows that the average home square footage is statistically significantly (p<0.05) lower for home near the incinerator prior to construction. 
-
-```{r b_evidence3, echo=FALSE, fig.cap="Relationship between rooms and proximity prior to construction"}
-lm_robust(rooms ~ nearinc, km_78) %>% 
-  tidy() %>% 
-  select(term, estimate, std.error, p.value) %>% 
-  kable()
-```
+formula: area ~ nearinc
+\bigskip
 
 The third regression shows that the average number of rooms was statistically significantly lower for homes near the incinerator prior to construction.
 
+```{r b_evidence3, echo=F}
+lm_robust(rooms ~ nearinc, km_78) %>% 
+  tidy() %>% 
+  select(term, estimate, std.error, p.value, outcome) %>% 
+  kable()
+```
+formula: rooms ~ nearinc
+\bigskip
 
+Lastly, the fourth regression shows that these two variables, rooms and area, have a statistically significant relationship with the price of a home. 
+
+```{r b_evidence4, echo=F}
+lm_robust(rprice ~ rooms + area, km_78) %>% 
+  tidy() %>% 
+  select(term, estimate, std.error, p.value, outcome) %>% 
+  kable()
+```
+formula: rprice ~ rooms + area
+\bigskip
+
+\newpage
 \noindent (c) Based on the observed differences in (b), explain why the estimate in (a) is likely to be biased downward (i.e., overstate the negative effect of the incinerator on housing values).
 
-
-```{r c}
-
-```
-
-
+The estimate in (a) is likely to be biased downward because of the evidence provided in (b), which shows that there is an existing average difference in housing values between the two groups prior to construction. In 1978, homes near the eventual incinerator location were, on average, lower value and possessed characteristics that correlate with decreased home value, such as fewer number of rooms and less square footage. Therefore, the coefficient in the estimate in (a) is partially capturing the negative effect on home value from these characteristics, causing it to overstate the negative effect of the incinerator.
+\bigskip
 
 \noindent (d) Use a difference-in-differences (DD) estimator to estimate the causal effect of the incinerator on housing values without controlling for house and lot characteristics. Interpret the magnitude and sign of the estimated DD coefficient. 
 
 ```{r d}
+km_dd <- km_data %>% 
+  # Create variable for post treatment period (1981) and for interaction
+  mutate(post_treatment = factor(ifelse(year==1981, 1, 0)),
+         D = factor(ifelse(post_treatment==1 & nearinc==1, 1, 0)))
 
+model_dd <- lm_robust(rprice ~ D + nearinc + post_treatment, km_dd)
+
+model_dd %>% 
+  tidy() %>%
+  select(term, estimate, std.error, p.value, conf.low, conf.high) %>% 
+  kable()
 ```
 
+```{r diff_in_diff, echo=F}
+treatment_diff = mean(km_81[km_81$nearinc == 1,]$rprice)-mean(km_81[km_81$nearinc == 0,]$rprice)
+control_diff = mean(km_78[km_78$nearinc == 1,]$rprice) - mean(km_78[km_78$nearinc == 0,]$rprice)
+```
+\bigskip
 
+The estimated DD coefficient indicates that home values are $`r round(model_dd$coefficients[["D1"]], 2)` less for houses near the incinerator in 1981 than in 1978. To explain further, from previous sections we know the mean difference pre and post-construction for homes near the incinerator is $`r round(treatment_diff, 2)` and the mean difference pre and post-construction for homes away from the incinerator is $`r round(control_diff, 2)`. The DD coefficient is the difference between these two values. 
+\bigskip
 
 \noindent (e) Report the 95% confidence interval for the estimate of the causal effect on the incinerator in (d).
 
-```{r e}
+As indicated in the DD regression results table in (d), the 95% confidence interval for the estimate of the causal effect of the incinerator is approximately (`r round(model_dd$conf.low[["D1"]])`, `r round(model_dd$conf.high[["D1"]])`).
 
-```
-
-
-
+\newpage
 \noindent (f) How does your answer in (d) changes when you control for house and lot characteristics? Test the hypothesis that the coefficients on the house and lot characteristics are all jointly equal to 0.
 
 ```{r f}
+model_dd2 <- lm_robust(rprice ~ D + nearinc + post_treatment + age + rooms + area + land, 
+                       data = km_dd)
 
+model_dd2 %>% 
+  tidy() %>%
+  select(term, estimate, std.error, p.value, conf.low, conf.high) %>% 
+  kable()
+```
+\bigskip
+
+When house and lot characteristics are added to the regression, the estimated DD coefficient indicates that home values are $`r round(model_dd2$coefficients[["D1"]], 2)` less for houses near the incinerator in 1981 than in 1978. This estimate is a more pronounced difference in price than the estimate for the uncontrolled regression. Additionally, the p-value is lower (p<0.051) and confidence interval includes zero closer to the upper bound.
+
+```{r f_test}
+linearHypothesis(model = model_dd2, c("age=0", "rooms=0", "area=0", "land=0"),
+                 test="F", 
+                 white.adjust="hc2")
 ```
 
+From the linear hypothesis above, the F-statistic is 34.512 (>10) with a corresponding p-value of less than 0.0001. Thus, the null hypothesis, the joint effect of the house and lot characteristics on price is equal to zero, can be rejected. This indicates that it is appropriate to control for these variables in the regression.
 
+\newpage
+\noindent (g) Using the results from the DD regression in (f), calculate by how much did real housing values change on average between 1978 and 1981.
 
-\noindent (g)  Using the results from the DD regression in (f), calculate by how much did real housing values change on average between 1978 and 1981.
-
-
-```{r g}
-
+```{r g, echo=F}
+control81 = model_dd2$coefficients[["post_treatment1"]]
+control78 = model_dd2$coefficients[["(Intercept)"]]
 ```
 
-
+The change in real housing value for the control group can be derived from the intercept and `post_treatment` coefficient. The intercept coefficient is the home value when `nearinc`=0 and the year is 1978, with all other house and lot characteristics also equal to zero. The `post_treatment` coefficient is the home value when `nearinc`=0 and the year is 1981, with all other house and lot characteristics also equal to zero. Therefore, the change in real housing values for the control group, on average, is \newline `r round(control81, 2)` - (`r round(control78, 2)`) = $`r round(control81-control78, 2)`.
+\bigskip
 
 \noindent (h) Explain (in words) what is the key assumption underlying the causal interpretation of the DD estimator in the context of the incinerator construction in North Andover.
 
-```{r h}
+The key assumption underlying the causal interpretation of the DD estimator is that, in absence of the construction of the incinerator in North Andover, the control group (homes away from the construction location) and treatment group (homes near the construction location) would have the same trends in their outcomes in terms of home value. 
+\bigskip
 
+```{r trends, echo=F}
+summary <- km_data %>% 
+  group_by(year, nearinc) %>%
+  summarize(rprice = mean(rprice))
+
+parallel <- data.frame(year=c(as.numeric(1978), as.numeric(1981)),
+                       nearinc = c(as.factor("Parallel Trend"), as.factor("Parallel Trend")),
+                       rprice= c(82517.23, 82517.23 + (70619.24-63692.86)))
+
+summary <- summary %>% 
+  rbind(parallel)
+
+ggplot(summary, aes(x=year, y=rprice, color=nearinc)) +
+  geom_line(aes(linetype=nearinc), show.legend = F) +
+  scale_linetype_manual(values=c("solid", "solid", "dashed")) + 
+  geom_point() +
+  theme(aspect.ratio=1/10) + 
+  theme_light() +
+  labs(x="Year",
+       y="Price ($)",
+       col="Near \nIncinerator",
+       title="Treatment and Control Trends")
 ```
 
+The graph above displays the trends in home value for the treatment and control groups, not controlling for house and lot characteristics. It is clear that the trend for the control group is different than the trend in treatment, as shown by the disparity between the control group and the parallel trend. Thus, the difference between the parallel trend and control group after treatment is the DD estimate (in the plot above, this is equal to $11,863, which is the result from the uncontrolled regression in part d). Note that this graphic is meant to illustrate and support the explanation of the parallel trend assumption and is not intended to be interpreted as a thorough test of the assumption.
 
